@@ -1,0 +1,5 @@
+package com.example.cuisineconnect
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity()
