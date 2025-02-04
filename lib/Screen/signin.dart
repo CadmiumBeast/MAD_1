@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -8,6 +11,76 @@ class SignIn extends StatefulWidget {
 }
 
 class _SignInState extends State<SignIn> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _mobileController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  void _signUp() async {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+    String confirmPassword = _confirmPasswordController.text.trim();
+
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match!")),
+      );
+      return;
+    }
+
+    try {
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (userCredential.user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Signup Successful!")),
+        );
+
+        Navigator.pushReplacementNamed(context, '/customer/home');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Signup failed: $e")),
+      );
+    }
+  }
+
+  // Google Sign-In method
+  Future<void> _signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        return; // User canceled sign-in
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      if (userCredential.user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Welcome, ${userCredential.user!.displayName}!")),
+        );
+        Navigator.pushReplacementNamed(context, '/customer/home');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google Sign-In Failed: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,10 +110,10 @@ class _SignInState extends State<SignIn> {
                     child: Text('Username'),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 30),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: TextField( 
-                    
+                    controller: _usernameController,
                   ),
                 
                 ),
@@ -51,10 +124,10 @@ class _SignInState extends State<SignIn> {
                     child: Text('Email'),
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 30),
                   child: TextField( 
-                    
+                    controller: _emailController,
                   ),
                 
                 ),
@@ -65,10 +138,10 @@ class _SignInState extends State<SignIn> {
                     child: Text('Mobile Number'),
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 30),
                   child: TextField( 
-                    
+                    controller: _mobileController,
                   ),
                 
                 ),
@@ -80,11 +153,11 @@ class _SignInState extends State<SignIn> {
                     child: Text('Password'),
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 30),
                   child: TextField(
                     obscureText: true, // Hide password input
-                  
+                    controller: _passwordController,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -95,18 +168,16 @@ class _SignInState extends State<SignIn> {
                     child: Text('Confirm Password'),
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 30),
                   child: TextField(
                     obscureText: true, // Hide password input
-                  
+                    controller: _confirmPasswordController,
                   ),
                 ),
                 const SizedBox(height: 10),
                 ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, '/customer/home');
-                 },
+                  onPressed: _signUp,
                   child: const Text('Signup'),
                 ),
                 TextButton(
@@ -115,7 +186,24 @@ class _SignInState extends State<SignIn> {
                   },
                   child: const Text('Alreay been here? Login'),
                 ),
-
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _signInWithGoogle,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset('asset/images/google_logo.png', height: 24), // Add Google logo
+                            const SizedBox(width: 10),
+                            const Text("Sign in with Google"),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

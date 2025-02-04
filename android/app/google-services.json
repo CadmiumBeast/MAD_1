@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "587725584732",
+    "project_id": "crusine-connect",
+    "storage_bucket": "crusine-connect.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:587725584732:android:8156c506f2421abf55e999",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-7wv6QlT90mSJob20EFv52EYMqPNGJkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:587725584732:android:76c041516fb0a68055e999",
+        "android_client_info": {
+          "package_name": "com.example.cuisineconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-7wv6QlT90mSJob20EFv52EYMqPNGJkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
