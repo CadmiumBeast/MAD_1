@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 class SignIn extends StatefulWidget {
@@ -23,6 +24,8 @@ class _SignInState extends State<SignIn> {
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
     String confirmPassword = _confirmPasswordController.text.trim();
+    String username = _usernameController.text.trim();
+    String mobile = _mobileController.text.trim();
 
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -32,17 +35,26 @@ class _SignInState extends State<SignIn> {
     }
 
     try {
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       if (userCredential.user != null) {
+        // Store user details and role in Firestore
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+          'username': username,
+          'email': email,
+          'mobile': mobile,
+          'role': 'customer',  // Assign 'customer' role
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Signup Successful!")),
         );
 
+        // Redirect user to customer home page
         Navigator.pushReplacementNamed(context, '/customer/home');
       }
     } catch (e) {
@@ -51,6 +63,8 @@ class _SignInState extends State<SignIn> {
       );
     }
   }
+
+
 
   // Google Sign-In method
   Future<void> _signInWithGoogle() async {

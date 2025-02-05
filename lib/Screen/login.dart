@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Loginpage extends StatefulWidget {
   const Loginpage({super.key});
@@ -15,6 +16,19 @@ class _LoginpageState extends State<Loginpage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  Future<String?> getUserRole(String uid) async {
+    try {
+      DocumentSnapshot userDoc =
+      await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        return userDoc['role'] as String?;
+      }
+    } catch (e) {
+      print("Error fetching user role: $e");
+    }
+    return null;
+  }
+
   //email and password login
   void _login() async {
     String email = _emailController.text.trim();
@@ -27,11 +41,31 @@ class _LoginpageState extends State<Loginpage> {
       );
 
       if (userCredential.user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login Successful!")),
-        );
+        // Fetch user role from Firestore
+        String? role = await getUserRole(userCredential.user!.uid);
 
-        Navigator.pushReplacementNamed(context, '/customer/home');
+        if (role != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Login Successful!")),
+          );
+
+          // Navigate to the appropriate page based on the user's role
+          if (role == 'customer') {
+            Navigator.pushReplacementNamed(context, '/customer/home');
+          } else if (role == 'restaurant') {
+            Navigator.pushReplacementNamed(context, '/resturant/home');
+          } else if (role == 'admin') {
+            Navigator.pushReplacementNamed(context, '/admin/home');
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Unknown user role!")),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to fetch user role!")),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,29 +75,29 @@ class _LoginpageState extends State<Loginpage> {
   }
 
   // Google Sign-In Function
-  Future<void> _signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
+  Future<User?> signInWithGoogle() async {
+    final GoogleSignIn googleSignIn = GoogleSignIn();
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
+    try {
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        return null; // User cancelled the sign-in
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser
+          .authentication;
+
+      final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
-
-      if (userCredential.user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Welcome, ${userCredential.user!.displayName}!")),
-        );
-        Navigator.pushReplacementNamed(context, '/resturant/home');
-      }
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+          credential);
+      return userCredential.user;
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In Failed: $e")),
-      );
+      print("Google Sign-In Failed: $e");
+      return null;
     }
   }
 
@@ -133,7 +167,7 @@ class _LoginpageState extends State<Loginpage> {
                   child: const Text('New Here? Register'),
                 ),
                 ElevatedButton(
-                  onPressed: _signInWithGoogle,
+                  onPressed: signInWithGoogle,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                   ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cuisineconnect/main.dart';
 import 'package:provider/provider.dart';
 
-import '../Widget/themController.dart';
+import '../../Widget/themController.dart';
 
 class ResturantItems extends StatefulWidget {
   const ResturantItems({super.key});
