@@ -1,108 +1,177 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:cuisineconnect/main.dart';
 import 'package:provider/provider.dart';
-
 import '../../Widget/themController.dart';
+import 'AddItem.dart';
+import 'homeResturant.dart';
 
 class ResturantItems extends StatefulWidget {
-  const ResturantItems({super.key});
+  final String resturantid;
+  const ResturantItems({super.key, required this.resturantid});
 
   @override
   State<ResturantItems> createState() => _ResturantItemsState();
 }
-//cart item remove button , couupons to add
+
 class _ResturantItemsState extends State<ResturantItems> {
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeModifier>(context);
+
     return Scaffold(
       appBar: AppBar(
-       title: Image(image: AssetImage(themeNotifier.isDarkMode ?'asset/images/dark_logo.png' : 'asset/images/logo.png'),
-        width: 110, height: 80,
-        ),
+        title: const Text('Restaurant Items'),
         actions: [
-          IconButton(onPressed: (){
-            themeNotifier.toggleTheme();},
-              icon: Icon(themeNotifier.isDarkMode ?  Icons.light_mode : Icons.dark_mode)) ,
-          GestureDetector(
-            onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
-
-            child: const Padding(padding: EdgeInsets.all(8.0),
-              child: CircleAvatar(
-              backgroundImage: AssetImage('asset/images/avatar.png'),
-              ),
-            ),
+          IconButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/logout');
+            },
+            icon: const Icon(Icons.logout),
           )
-      ],
+        ],
       ),
 
       body: Padding(
         padding: const EdgeInsets.all(10.0),
         child: Column(
           children: [
-            Text('Sultan Palace',
-            style: Theme.of(context).textTheme.headlineLarge,
+            Text(
+              'Restaurant Menu',
+              style: Theme.of(context).textTheme.headlineLarge,
             ),
-            Text('Multi-Cuisine',
-            style: Theme.of(context).textTheme.bodyMedium,
+            const SizedBox(height: 10),
+
+            // Fetch Items from Firestore
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('restaurants')
+                    .doc(widget.resturantid)
+                    .collection('items')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return const Center(
+                        child: Text("Error fetching restaurant items"));
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                        child: Text("No items found for this restaurant"));
+                  }
+
+                  final items = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index].data() as Map<String, dynamic>;
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                        child: ListTile(
+                          leading: item['imageUrl'] != null
+                              ? Image.network(
+                            item['imageUrl'],
+                            height: 50,
+                            width: 50,
+                            fit: BoxFit.cover,
+                          )
+                              : const Icon(Icons.fastfood),
+                          title: Text(
+                            item['itemName'] ?? 'Unnamed Item',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          subtitle: Text(
+                            item['cuisineType'] ?? 'Unknown Cuisine',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              await FirebaseFirestore.instance
+                                  .collection('restaurants')
+                                  .doc(widget.resturantid)
+                                  .collection('items')
+                                  .doc(items[index].id)
+                                  .delete();
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Item deleted successfully')),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-            Text('Colombo-07',
-            style: Theme.of(context).textTheme.bodySmall,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Image(image: AssetImage('asset/images/kottu.png'),
-                width: 100.00, height: 100.00,),
-                Text('Kottu Roti',
-                style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                IconButton(onPressed: (){
-                  Navigator.pushReplacementNamed(context, '/customer/home');
-                }, icon:  Icon(
-                  Icons.add,
-                  size: 30,
-                  color: themeNotifier.isDarkMode ? Colors.white : Colors.black,
-                ))
-              ],
-            )
           ],
         ),
       ),
 
-
-
       bottomNavigationBar: Container(
-           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              Container(
-                margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-                child: IconButton(onPressed: (){
-                  Navigator.pushReplacementNamed(context, '/customer/home');
-                }, icon: Icon(Icons.home), color: themeNotifier.isDarkMode ?
-                  Colors.white : Colors.black,),
-              ),
-              Container(
-                margin: const EdgeInsets.fromLTRB(25, 0, 0, 0),
-                child: IconButton(onPressed: (){
-                  Navigator.pushReplacementNamed(context, '/customer/cart');
-                }, icon:  Icon(Icons.shopping_cart, color: themeNotifier.isDarkMode ?
-                Colors.amber : Colors.amber)),
-              ),
-              Container(
-                margin: const EdgeInsets.fromLTRB(25, 0, 0, 0),
-                child: IconButton(onPressed: (){
-                  Navigator.pushReplacementNamed(context, '/orderList');
-                  }, icon:Icon(Icons.list, color: themeNotifier.isDarkMode ?
-                Colors.amber : Colors.amber)),
-              ),
-            ],
-            
-           )
-        
-    ),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        Homeresturant(resturantid: widget.resturantid),
+                  ),
+                );
+              },
+              icon: Icon(Icons.list,
+                  color: themeNotifier.isDarkMode
+                      ? Colors.amber
+                      : Colors.amber),
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ResturantItems(resturantid: widget.resturantid),
+                  ),
+                );
+              },
+              icon: Icon(Icons.restaurant_menu,
+                  color: themeNotifier.isDarkMode
+                      ? Colors.white
+                      : Colors.black),
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        Additem(resturantid: widget.resturantid),
+                  ),
+                );
+              },
+              icon: Icon(Icons.add,
+                  color: themeNotifier.isDarkMode
+                      ? Colors.amber
+                      : Colors.amber),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

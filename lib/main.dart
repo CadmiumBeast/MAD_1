@@ -1,3 +1,4 @@
+import 'package:cuisineconnect/Screen/Resturants/AddItem.dart';
 import 'package:cuisineconnect/Screen/homeCustomer.dart';
 import 'package:cuisineconnect/Screen/Resturants/homeResturant.dart';
 import 'package:cuisineconnect/Screen/login.dart';
@@ -61,8 +62,6 @@ class MyApp extends StatelessWidget {
               '/logout' : (context) => const Loginpage(),
               '/customer/home' : (context) => const HomeCustomer(),
               '/customer/cart' : (context) => const CartPage(),
-              '/resturant/home' : (context) => const Homeresturant(),
-              '/resturant/item' : (context) => const ResturantItems(),
               '/admin/home' : (context) => const AdminHome(),
               '/admin/restaurant/add' : (context) => const AdminAddRestaurant(),
               '/admin/customer/list' : (context) => const AdminAllUsers(),

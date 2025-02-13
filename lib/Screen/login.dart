@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'Resturants/homeResturant.dart';
 
 class Loginpage extends StatefulWidget {
   const Loginpage({super.key});
@@ -29,7 +35,39 @@ class _LoginpageState extends State<Loginpage> {
     return null;
   }
 
-  //email and password login
+  Future<void> saveRestaurantsToJson() async {
+    try {
+      // Fetch restaurant data from Firestore
+      QuerySnapshot restaurantSnapshot =
+      await FirebaseFirestore.instance.collection('restaurants').get();
+
+      List<Map<String, dynamic>> restaurantList = restaurantSnapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'name': doc['name'],
+          'address': doc['address'],
+          'latitude': doc['latitude'],
+          'longitude': doc['longitude'],
+          'imageUrl': doc['imageUrl'],
+          'ownerId': doc['ownerId'],
+        };
+      }).toList();
+
+      String jsonData = jsonEncode(restaurantList);
+
+      // Get application support directory (persists data)
+      Directory appDir = await getApplicationSupportDirectory();
+      File file = File('${appDir.path}/restaurants.json');
+
+      // Write JSON data to the file
+      await file.writeAsString(jsonData);
+
+      print("Restaurant data saved to: ${file.path}");
+    } catch (e) {
+      print("Error saving restaurant data: $e");
+    }
+  }
+
   void _login() async {
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
@@ -40,39 +78,78 @@ class _LoginpageState extends State<Loginpage> {
         password: password,
       );
 
-      if (userCredential.user != null) {
-        // Fetch user role from Firestore
-        String? role = await getUserRole(userCredential.user!.uid);
+      // Wait for Firebase authentication state to update
+      await Future.delayed(const Duration(seconds: 2));
 
-        if (role != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Login Successful!")),
-          );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print("DEBUG: FirebaseAuth.instance.currentUser is NULL after login!");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Authentication error! Try again.")),
+        );
+        return;
+      }
 
-          // Navigate to the appropriate page based on the user's role
-          if (role == 'customer') {
-            Navigator.pushReplacementNamed(context, '/customer/home');
-          } else if (role == 'restaurant') {
-            Navigator.pushReplacementNamed(context, '/resturant/home');
-          } else if (role == 'admin') {
-            Navigator.pushReplacementNamed(context, '/admin/home');
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Unknown user role!")),
-            );
+      print("DEBUG: Logged-in User UID: ${user.uid}");
+
+      // Fetch user role from Firestore
+      String? role = await getUserRole(user.uid);
+
+      if (role != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Login Successful!")),
+        );
+
+        // Navigate to the appropriate page based on the user's role
+        if (role == 'customer') {
+          Navigator.pushReplacementNamed(context, '/customer/home');
+        } else if (role == 'restaurant') {
+          if (role == 'restaurant') {
+            String userId = userCredential.user!.uid;
+
+            QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+                .collection('restaurants')
+                .where('ownerId', isEqualTo: userId) // Find the restaurant that belongs to this owner
+                .limit(1)
+                .get();
+
+            if (querySnapshot.docs.isNotEmpty) {
+              String restaurantId = querySnapshot.docs.first.id; // Get the correct restaurant ID
+              print("DEBUG: Correct restaurantId for user: $restaurantId");
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Homeresturant(resturantid: restaurantId),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("You are not associated with any restaurant")),
+              );
+            }
           }
+
+        } else if (role == 'admin') {
+          Navigator.pushReplacementNamed(context, '/admin/home');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Failed to fetch user role!")),
+            const SnackBar(content: Text("Unknown user role!")),
           );
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to fetch user role!")),
+        );
       }
     } catch (e) {
+      print("DEBUG: Login error - $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login failed: $e")),
       );
     }
   }
+
 
   // Google Sign-In Function
   Future<User?> signInWithGoogle() async {
